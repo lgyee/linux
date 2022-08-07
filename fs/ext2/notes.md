@@ -31,8 +31,8 @@ echo g > /proc/sysrq-trigger
 
 ## write to a inode
 
-#0  ext2_file_write_iter (iocb=0xffffc9000199fe28, from=0xffffc9000199fe50) at fs/ext2/file.c:175
-#1  0xffffffff812b0d9d in call_write_iter (file=<optimized out>, iter=<optimized out>, kio=<optimized out>) at ./include/linux/fs.h:1823
+#0  ext2_file_write_iter (iocb=0xffffc9000199fe28, from=0xffffc9000199fe50) at fs/ext2/file.c:175                          //ext2 code, called by vfs
+#1  0xffffffff812b0d9d in call_write_iter (file=<optimized out>, iter=<optimized out>, kio=<optimized out>) at ./include/linux/fs.h:1823   
 #2  new_sync_write (ppos=<optimized out>, len=<optimized out>, buf=<optimized out>, filp=<optimized out>) at fs/read_write.c:474
 #3  __vfs_write (file=0xffffc9000199fe28, p=<optimized out>, count=<optimized out>, pos=0xffffc9000199fee8) at fs/read_write.c:487
 #4  0xffffffff812b0fd8 in vfs_write (file=0xffff88811e148e00, buf=0xd0a408 "12\n", '\337' <repeats 196 times>, <incomplete sequence \337>..., count=3,
@@ -44,6 +44,24 @@ echo g > /proc/sysrq-trigger
 #9  0xffffffff8100425a in do_syscall_64 (nr=<optimized out>, regs=0xffffc9000199fe50) at arch/x86/entry/common.c:293
 #10 0xffffffff81c00088 in entry_SYSCALL_64 () at arch/x86/entry/entry_64.S:238
 
+//wait a moment, this ext2_write_inode will be called.
+
+#0  ext2_write_inode (inode=0xffff8880abf451f8, wbc=0xffffc90002f73c38) at fs/ext2/inode.c:1637
+#1  0xffffffff812e3c0a in write_inode (wbc=<optimized out>, inode=<optimized out>) at fs/fs-writeback.c:1244
+#2  __writeback_single_inode (inode=0xffff8880abf451f8, wbc=0xffffc90002f73c38) at fs/fs-writeback.c:1442
+#3  0xffffffff812e4225 in writeback_sb_inodes (sb=0xffff88812384f800, wb=0xffff888035646058, work=0xffffc90002f73df8) at fs/fs-writeback.c:1647
+#4  0xffffffff812e4612 in __writeback_inodes_wb (wb=0xffff888035646058, work=0xffffc90002f73df8) at fs/fs-writeback.c:1716
+#5  0xffffffff812e498f in wb_writeback (wb=0xffff888035646058, work=0xffffc90002f73df8) at fs/fs-writeback.c:1822
+#6  0xffffffff812e5351 in wb_check_old_data_flush (wb=<optimized out>) at fs/fs-writeback.c:1924
+#7  wb_do_writeback (wb=<optimized out>) at fs/fs-writeback.c:1977
+#8  wb_workfn (work=0xffff8880356461e8) at fs/fs-writeback.c:2006
+#9  0xffffffff810b3df7 in process_one_work (worker=0xffff88803593eb40, work=0xffff8880356461e8) at kernel/workqueue.c:2153
+#10 0xffffffff810b444d in worker_thread (__worker=0xffff88803593eb40) at kernel/workqueue.c:2296
+#11 0xffffffff810ba975 in kthread (_create=0xffff8880b067b2c0) at kernel/kthread.c:259
+#12 0xffffffff81c001ff in ret_from_fork () at arch/x86/entry/entry_64.S:415
+#13 0x0000000000000000 in ?? ()
+
+
 # different inode
 
 - inode            //vfs inode
@@ -54,7 +72,7 @@ echo g > /proc/sysrq-trigger
 
 - ext2_sops                     // a member of super block block, it will implement how to allocate and r/w inode.
 - ext2_dir_inode_operations     // a member of inode, it will call ext2_sops finally in the implementation of ext2.
-- ext2_dir_operations           // a member of inode, //TODO, in the view of ext2.
+- ext2_file_operations          // a member of inode, //TODO, in the view of ext2.
 
-
+> there are four sets of operations needed to set(dir_inode, dir_op,file_inode,file_op)
 
